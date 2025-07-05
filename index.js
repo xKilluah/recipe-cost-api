@@ -4,7 +4,15 @@ const port = process.env.PORT || 3000;
 
 app.use(express.json());
 
-// Your /calculate-cost route here ⬇
+// In-memory recipe store
+let savedRecipes = [];
+
+// Welcome route
+app.get('/', (req, res) => {
+  res.send('👨‍🍳 Welcome to the Recipe Cost API!');
+});
+
+// Calculate cost and pricing for a recipe
 app.post('/calculate-cost', (req, res) => {
   const { recipe_name, servings, ingredients, markup_multiplier } = req.body;
 
@@ -48,6 +56,28 @@ app.post('/calculate-cost', (req, res) => {
     profit_margin_per_serving: parseFloat(profitMarginPerServing.toFixed(2)),
     food_cost_percent: parseFloat(foodCostPercent.toFixed(2))
   });
+});
+
+// Save a recipe to memory
+app.post('/save-recipe', (req, res) => {
+  const recipe = req.body;
+
+  if (!recipe.recipe_name || !recipe.servings || !Array.isArray(recipe.ingredients)) {
+    return res.status(400).json({ error: 'Missing required fields.' });
+  }
+
+  const exists = savedRecipes.find(r => r.recipe_name === recipe.recipe_name);
+  if (exists) {
+    return res.status(409).json({ error: 'Recipe with this name already exists.' });
+  }
+
+  savedRecipes.push(recipe);
+  return res.status(201).json({ message: 'Recipe saved successfully.' });
+});
+
+// Get all saved recipes
+app.get('/recipes', (req, res) => {
+  return res.json(savedRecipes);
 });
 
 // Start the server
