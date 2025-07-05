@@ -17,8 +17,12 @@ app.post('/calculate-cost', (req, res) => {
     totalCost += item.quantity * item.unit_cost;
   });
 
+  const markupMultiplier = typeof req.body.markup_multiplier === 'number' && req.body.markup_multiplier > 0
+  ? req.body.markup_multiplier
+  : 3;
+
   const costPerServing = totalCost / servings;
-  const suggestedPrice = costPerServing * 3; // 3x markup
+  const suggestedPricePerServing = costPerServing * markupMultiplier; // 3x markup
   const profitMargin = suggestedPrice - costPerServing;
   const foodCostPercent = ((costPerServing / suggestedPrice) * 100).toFixed(2);
 
