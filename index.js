@@ -48,11 +48,13 @@ app.post('/calculate-cost', (req, res) => {
     return res.status(400).json({ error: 'Invalid input.' });
   }
 
-  const totalCost = ingredients.reduce((sum, item) => {
-    return sum + item.quantity * item.unit_cost;
-  }, 0);
+  const totalCost = ingredients.reduce((sum, item) => sum + item.quantity * item.unit_cost, 0);
 
-  const multiplier = typeof markup_multiplier === 'number' && markup_multiplier > 0 ? markup_multiplier : 3;
+  const multiplier =
+    typeof markup_multiplier === 'number' && markup_multiplier > 0
+      ? markup_multiplier
+      : 3;
+
   const costPerServing = totalCost / servings;
   const suggestedPrice = costPerServing * multiplier;
   const profitMargin = suggestedPrice - costPerServing;
@@ -103,6 +105,25 @@ app.get('/recipes/:name', async (req, res) => {
     res.json(recipe);
   } catch (err) {
     res.status(500).json({ error: 'Failed to fetch recipe.' });
+  }
+});
+
+// 🔄 Update Recipe by Name
+app.put('/recipes/:name', async (req, res) => {
+  try {
+    const name = req.params.name;
+    const updates = req.body;
+    const recipe = await Recipe.findOneAndUpdate(
+      { recipe_name: name },
+      updates,
+      { new: true, runValidators: true }
+    );
+    if (!recipe) {
+      return res.status(404).json({ error: 'Recipe not found.' });
+    }
+    res.json(recipe);
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to update recipe.', details: err.message });
   }
 });
 
