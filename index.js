@@ -6,7 +6,7 @@ const port = process.env.PORT || 3000;
 app.use(express.json());
 
 // 🔌 Connect to MongoDB
-mongoose.connect('mongodb+srv://trkonstantinostkp:<ITF3JVi7c7o9bCAj>@cluster0.zdiglid.mongodb.net/recipesdb?retryWrites=true&w=majority&appName=Cluster0', {
+mongoose.connect('mongodb+srv://trkonstantinostkp:ITF3JVi7c7o9bCAj@cluster0.zdiglid.mongodb.net/recipesdb?retryWrites=true&w=majority&appName=Cluster0', {
   useNewUrlParser: true,
   useUnifiedTopology: true
 })
