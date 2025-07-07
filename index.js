@@ -2,7 +2,7 @@ const express = require('express');
 const mongoose = require('mongoose');
 const dotenv = require('dotenv');
 
-dotenv.config(); // Load env variables
+dotenv.config();
 console.log('🔎 MONGODB_URI:', process.env.MONGODB_URI);
 
 const app = express();
@@ -82,7 +82,7 @@ app.post('/save-recipe', async (req, res) => {
   }
 });
 
-// 📦 Fetch Recipes
+// 📦 Fetch All Recipes
 app.get('/recipes', async (req, res) => {
   try {
     const recipes = await Recipe.find();
@@ -92,7 +92,21 @@ app.get('/recipes', async (req, res) => {
   }
 });
 
-// 🚀 Launch server
+// 📥 Fetch One Recipe by Name
+app.get('/recipes/:name', async (req, res) => {
+  try {
+    const name = req.params.name;
+    const recipe = await Recipe.findOne({ recipe_name: name });
+    if (!recipe) {
+      return res.status(404).json({ error: 'Recipe not found.' });
+    }
+    res.json(recipe);
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to fetch recipe.' });
+  }
+});
+
+// 🚀 Launch Server
 app.listen(port, () => {
   console.log(`🚀 API is running on http://localhost:${port}`);
 });
