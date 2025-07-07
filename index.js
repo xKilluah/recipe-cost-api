@@ -1,37 +1,46 @@
 const express = require('express');
+const mongoose = require('mongoose');
 const app = express();
 const port = process.env.PORT || 3000;
 
 app.use(express.json());
 
-// In-memory recipe store
-let savedRecipes = [];
+// 🔌 Connect to MongoDB
+mongoose.connect('mongodb+srv://trkonstantinostkp:<ITF3JVi7c7o9bCAj>@cluster0.zdiglid.mongodb.net/recipesdb?retryWrites=true&w=majority&appName=Cluster0', {
+  useNewUrlParser: true,
+  useUnifiedTopology: true
+})
+.then(() => console.log('✅ Connected to MongoDB'))
+.catch((err) => console.error('❌ MongoDB connection error:', err));
 
-// Welcome route
-app.get('/', (req, res) => {
-  res.send('👨‍🍳 Welcome to the Recipe Cost API!');
+// 🍲 Define the Recipe schema
+const recipeSchema = new mongoose.Schema({
+  recipe_name: { type: String, required: true, unique: true },
+  servings: { type: Number, required: true },
+  ingredients: [
+    {
+      name: String,
+      quantity: Number,
+      unit: String,
+      unit_cost: Number
+    }
+  ]
 });
 
-// Calculate cost and pricing for a recipe
+// 🧾 Create the model
+const Recipe = mongoose.model('Recipe', recipeSchema);
+
+// 👋 Welcome route
+app.get('/', (req, res) => {
+  res.send('👨‍🍳 Welcome to the Recipe Cost API + MongoDB!');
+});
+
+// 💸 Calculate cost
 app.post('/calculate-cost', (req, res) => {
   const { recipe_name, servings, ingredients, markup_multiplier } = req.body;
 
   if (!recipe_name || !servings || !Array.isArray(ingredients)) {
-    return res.status(400).json({
-      error: 'Invalid input: recipe_name, servings, and ingredients are required.',
-    });
-  }
-
-  for (let item of ingredients) {
-    if (
-      !item.name ||
-      typeof item.quantity !== 'number' ||
-      typeof item.unit_cost !== 'number'
-    ) {
-      return res.status(400).json({
-        error: 'Each ingredient must have a name, numeric quantity, and unit_cost.',
-      });
-    }
+    return res.status(400).json({ error: 'Invalid input.' });
   }
 
   const totalCost = ingredients.reduce((sum, item) => {
@@ -58,29 +67,31 @@ app.post('/calculate-cost', (req, res) => {
   });
 });
 
-// Save a recipe to memory
-app.post('/save-recipe', (req, res) => {
-  const recipe = req.body;
-
-  if (!recipe.recipe_name || !recipe.servings || !Array.isArray(recipe.ingredients)) {
-    return res.status(400).json({ error: 'Missing required fields.' });
+// 💾 Save to MongoDB
+app.post('/save-recipe', async (req, res) => {
+  try {
+    const recipe = new Recipe(req.body);
+    await recipe.save();
+    res.status(201).json({ message: 'Recipe saved to MongoDB!' });
+  } catch (err) {
+    if (err.code === 11000) {
+      return res.status(409).json({ error: 'Recipe name already exists.' });
+    }
+    res.status(500).json({ error: 'Failed to save recipe.', details: err.message });
   }
-
-  const exists = savedRecipes.find(r => r.recipe_name === recipe.recipe_name);
-  if (exists) {
-    return res.status(409).json({ error: 'Recipe with this name already exists.' });
-  }
-
-  savedRecipes.push(recipe);
-  return res.status(201).json({ message: 'Recipe saved successfully.' });
 });
 
-// Get all saved recipes
-app.get('/recipes', (req, res) => {
-  return res.json(savedRecipes);
+// 📦 Fetch all from MongoDB
+app.get('/recipes', async (req, res) => {
+  try {
+    const recipes = await Recipe.find();
+    res.json(recipes);
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to fetch recipes.' });
+  }
 });
 
-// Start the server
+// 🚀 Start server
 app.listen(port, () => {
   console.log(`API is running on http://localhost:${port}`);
 });
