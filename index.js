@@ -1,12 +1,16 @@
 const express = require('express');
 const mongoose = require('mongoose');
+const dotenv = require('dotenv');
+
+dotenv.config();
+
 const app = express();
 const port = process.env.PORT || 3000;
 
 app.use(express.json());
 
 // 🔌 Connect to MongoDB
-mongoose.connect('mongodb+srv://trkonstantinostkp:ITF3JVi7c7o9bCAj@cluster0.zdiglid.mongodb.net/recipesdb?retryWrites=true&w=majority', {
+mongoose.connect(process.env.MONGODB_URI, {
   useNewUrlParser: true,
   useUnifiedTopology: true
 })
@@ -27,15 +31,14 @@ const recipeSchema = new mongoose.Schema({
   ]
 });
 
-// 🧾 Create the model
 const Recipe = mongoose.model('Recipe', recipeSchema);
 
-// 👋 Welcome route
+// Welcome Route
 app.get('/', (req, res) => {
   res.send('👨‍🍳 Welcome to the Recipe Cost API + MongoDB!');
 });
 
-// 💸 Calculate cost
+// Calculate Cost Route
 app.post('/calculate-cost', (req, res) => {
   const { recipe_name, servings, ingredients, markup_multiplier } = req.body;
 
@@ -47,27 +50,23 @@ app.post('/calculate-cost', (req, res) => {
     return sum + item.quantity * item.unit_cost;
   }, 0);
 
-  const multiplier =
-    typeof markup_multiplier === 'number' && markup_multiplier > 0
-      ? markup_multiplier
-      : 3;
-
+  const multiplier = typeof markup_multiplier === 'number' && markup_multiplier > 0 ? markup_multiplier : 3;
   const costPerServing = totalCost / servings;
-  const suggestedPricePerServing = costPerServing * multiplier;
-  const profitMarginPerServing = suggestedPricePerServing - costPerServing;
-  const foodCostPercent = (costPerServing / suggestedPricePerServing) * 100;
+  const suggestedPrice = costPerServing * multiplier;
+  const profitMargin = suggestedPrice - costPerServing;
+  const foodCostPercent = (costPerServing / suggestedPrice) * 100;
 
-  return res.json({
+  res.json({
     recipe_name,
-    total_cost: parseFloat(totalCost.toFixed(2)),
-    cost_per_serving: parseFloat(costPerServing.toFixed(2)),
-    suggested_price_per_serving: parseFloat(suggestedPricePerServing.toFixed(2)),
-    profit_margin_per_serving: parseFloat(profitMarginPerServing.toFixed(2)),
-    food_cost_percent: parseFloat(foodCostPercent.toFixed(2))
+    total_cost: +totalCost.toFixed(2),
+    cost_per_serving: +costPerServing.toFixed(2),
+    suggested_price_per_serving: +suggestedPrice.toFixed(2),
+    profit_margin_per_serving: +profitMargin.toFixed(2),
+    food_cost_percent: +foodCostPercent.toFixed(2)
   });
 });
 
-// 💾 Save to MongoDB
+// Save Recipe Route
 app.post('/save-recipe', async (req, res) => {
   try {
     const recipe = new Recipe(req.body);
@@ -81,7 +80,7 @@ app.post('/save-recipe', async (req, res) => {
   }
 });
 
-// 📦 Fetch all from MongoDB
+// Get All Recipes Route
 app.get('/recipes', async (req, res) => {
   try {
     const recipes = await Recipe.find();
@@ -91,7 +90,7 @@ app.get('/recipes', async (req, res) => {
   }
 });
 
-// 🚀 Start server
+// Start Server
 app.listen(port, () => {
-  console.log(`API is running on http://localhost:${port}`);
+  console.log(`🚀 API is running on http://localhost:${port}`);
 });
