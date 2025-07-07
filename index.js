@@ -2,22 +2,22 @@ const express = require('express');
 const mongoose = require('mongoose');
 const dotenv = require('dotenv');
 
-dotenv.config();
+dotenv.config(); // Load env variables
 
 const app = express();
 const port = process.env.PORT || 3000;
 
 app.use(express.json());
 
-// 🔌 Connect to MongoDB
+// 🔌 MongoDB Connection
 mongoose.connect(process.env.MONGODB_URI, {
   useNewUrlParser: true,
   useUnifiedTopology: true
 })
 .then(() => console.log('✅ Connected to MongoDB'))
-.catch((err) => console.error('❌ MongoDB connection error:', err));
+.catch(err => console.error('❌ MongoDB connection error:', err));
 
-// 🍲 Define the Recipe schema
+// 🍲 Recipe Schema
 const recipeSchema = new mongoose.Schema({
   recipe_name: { type: String, required: true, unique: true },
   servings: { type: Number, required: true },
@@ -31,14 +31,15 @@ const recipeSchema = new mongoose.Schema({
   ]
 });
 
+// 🧾 Model
 const Recipe = mongoose.model('Recipe', recipeSchema);
 
-// Welcome Route
+// 👋 Home Route
 app.get('/', (req, res) => {
   res.send('👨‍🍳 Welcome to the Recipe Cost API + MongoDB!');
 });
 
-// Calculate Cost Route
+// 💸 Cost Calculation
 app.post('/calculate-cost', (req, res) => {
   const { recipe_name, servings, ingredients, markup_multiplier } = req.body;
 
@@ -66,7 +67,7 @@ app.post('/calculate-cost', (req, res) => {
   });
 });
 
-// Save Recipe Route
+// 💾 Save Recipe
 app.post('/save-recipe', async (req, res) => {
   try {
     const recipe = new Recipe(req.body);
@@ -80,7 +81,7 @@ app.post('/save-recipe', async (req, res) => {
   }
 });
 
-// Get All Recipes Route
+// 📦 Fetch Recipes
 app.get('/recipes', async (req, res) => {
   try {
     const recipes = await Recipe.find();
@@ -90,7 +91,7 @@ app.get('/recipes', async (req, res) => {
   }
 });
 
-// Start Server
+// 🚀 Launch server
 app.listen(port, () => {
   console.log(`🚀 API is running on http://localhost:${port}`);
 });
