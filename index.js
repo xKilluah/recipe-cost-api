@@ -3,6 +3,7 @@ const mongoose = require('mongoose');
 const dotenv = require('dotenv');
 
 dotenv.config(); // Load env variables
+console.log('🔎 MONGODB_URI:', process.env.MONGODB_URI);
 
 const app = express();
 const port = process.env.PORT || 3000;
