@@ -1,5 +1,3 @@
-// index.js
-
 const express = require('express');
 const mongoose = require('mongoose');
 const dotenv = require('dotenv');
@@ -22,40 +20,33 @@ const requireApiKey = (req, res, next) => {
   next();
 };
 
-// ——————————————
-// DEBUG: show exactly what URI we're using
-console.log('→ [DEBUG] MONGODB_URI =', JSON.stringify(process.env.MONGODB_URI));
-// ——————————————
-
+// Connect to MongoDB
 mongoose
-  .connect(process.env.MONGODB_URI, {
-    useNewUrlParser: true,
-    useUnifiedTopology: true,
-  })
+  .connect(process.env.MONGODB_URI)
   .then(() => console.log('✅ Connected to MongoDB'))
   .catch(err => console.error('❌ MongoDB connection error:', err));
 
-// Recipe schema & model
+// Define Recipe schema and model
 const recipeSchema = new mongoose.Schema({
   recipe_name: { type: String, required: true, unique: true },
   servings: { type: Number, required: true },
   ingredients: [
     {
-      name: String,
-      quantity: Number,
-      unit: String,
-      unit_cost: Number,
-    },
-  ],
+      name: { type: String, required: true },
+      quantity: { type: Number, required: true },
+      unit: { type: String, required: true },
+      unit_cost: { type: Number, required: true }
+    }
+  ]
 });
 const Recipe = mongoose.model('Recipe', recipeSchema);
 
-// Public health check
+// Public health check (no API key required)
 app.get('/', (req, res) => {
   res.send('👨‍🍳 Recipe Cost API with key auth is running!');
 });
 
-// All routes below require a valid x-api-key
+// Require API key for all subsequent routes
 app.use(requireApiKey);
 
 // Calculate cost endpoint
@@ -64,7 +55,7 @@ app.post('/calculate-cost', (req, res) => {
   if (!recipe_name || !servings || !Array.isArray(ingredients)) {
     return res.status(400).json({ error: 'Invalid input.' });
   }
-  const totalCost = ingredients.reduce((sum, i) => sum + i.quantity * i.unit_cost, 0);
+  const totalCost = ingredients.reduce((sum, item) => sum + item.quantity * item.unit_cost, 0);
   const multiplier = typeof markup_multiplier === 'number' && markup_multiplier > 0 ? markup_multiplier : 3;
   const costPerServing = totalCost / servings;
   const suggestedPrice = costPerServing * multiplier;
@@ -76,11 +67,11 @@ app.post('/calculate-cost', (req, res) => {
     cost_per_serving: parseFloat(costPerServing.toFixed(2)),
     suggested_price_per_serving: parseFloat(suggestedPrice.toFixed(2)),
     profit_margin_per_serving: parseFloat(profitMargin.toFixed(2)),
-    food_cost_percent: parseFloat(foodCostPercent.toFixed(2)),
+    food_cost_percent: parseFloat(foodCostPercent.toFixed(2))
   });
 });
 
-// Create recipe
+// Create (Save) a recipe
 app.post('/save-recipe', async (req, res) => {
   try {
     const recipe = new Recipe(req.body);
@@ -92,7 +83,7 @@ app.post('/save-recipe', async (req, res) => {
   }
 });
 
-// Read all with optional filters
+// Read (Fetch) all recipes with optional name/ingredient filters
 app.get('/recipes', async (req, res) => {
   try {
     const { name, ingredient } = req.query;
@@ -106,7 +97,7 @@ app.get('/recipes', async (req, res) => {
   }
 });
 
-// Read one by name
+// Read (Fetch) one recipe by exact name
 app.get('/recipes/:name', async (req, res) => {
   try {
     const recipe = await Recipe.findOne({ recipe_name: req.params.name });
@@ -117,7 +108,7 @@ app.get('/recipes/:name', async (req, res) => {
   }
 });
 
-// Update by name
+// Update a recipe by name
 app.put('/recipes/:name', async (req, res) => {
   try {
     const recipe = await Recipe.findOneAndUpdate(
@@ -132,7 +123,7 @@ app.put('/recipes/:name', async (req, res) => {
   }
 });
 
-// Delete by name
+// Delete a recipe by name
 app.delete('/recipes/:name', async (req, res) => {
   try {
     const result = await Recipe.findOneAndDelete({ recipe_name: req.params.name });
@@ -143,7 +134,7 @@ app.delete('/recipes/:name', async (req, res) => {
   }
 });
 
-// Start server
+// Start the server
 app.listen(port, () => {
   console.log(`🚀 API running on port ${port}`);
 });
