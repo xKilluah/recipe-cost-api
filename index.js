@@ -2,39 +2,42 @@ const express = require('express');
 const mongoose = require('mongoose');
 const dotenv = require('dotenv');
 
+// Load environment variables from .env
 dotenv.config();
 
 const app = express();
 const port = process.env.PORT || 3000;
 
+// Middleware to parse JSON
 app.use(express.json());
 
-// MongoDB connection
+// Connect to MongoDB Atlas
 mongoose.connect(process.env.MONGODB_URI, {
   useNewUrlParser: true,
-  useUnifiedTopology: true
+  useUnifiedTopology: true,
 })
 .then(() => console.log('✅ Connected to MongoDB'))
-.catch(err => console.error('❌ MongoDB connection error:', err));
+.catch((err) => console.error('❌ MongoDB connection error:', err));
 
-// Recipe schema and model
+// Define Recipe schema and model
 const recipeSchema = new mongoose.Schema({
   recipe_name: { type: String, required: true, unique: true },
   servings: { type: Number, required: true },
   ingredients: [
     {
-      name: String,
-      quantity: Number,
-      unit: String,
-      unit_cost: Number
+      name: { type: String, required: true },
+      quantity: { type: Number, required: true },
+      unit: { type: String, required: true },
+      unit_cost: { type: Number, required: true }
     }
-  ]
+  ],
 });
+
 const Recipe = mongoose.model('Recipe', recipeSchema);
 
 // Home route
 app.get('/', (req, res) => {
-  res.send('👨‍🍳 Recipe Cost API is running!');
+  res.send('👨‍🍳 Recipe Cost API with full CRUD is running!');
 });
 
 // Calculate cost and pricing
@@ -51,15 +54,15 @@ app.post('/calculate-cost', (req, res) => {
   const foodCostPercent = (costPerServing / suggestedPrice) * 100;
   res.json({
     recipe_name,
-    total_cost: +totalCost.toFixed(2),
-    cost_per_serving: +costPerServing.toFixed(2),
-    suggested_price_per_serving: +suggestedPrice.toFixed(2),
-    profit_margin_per_serving: +profitMargin.toFixed(2),
-    food_cost_percent: +foodCostPercent.toFixed(2)
+    total_cost: parseFloat(totalCost.toFixed(2)),
+    cost_per_serving: parseFloat(costPerServing.toFixed(2)),
+    suggested_price_per_serving: parseFloat(suggestedPrice.toFixed(2)),
+    profit_margin_per_serving: parseFloat(profitMargin.toFixed(2)),
+    food_cost_percent: parseFloat(foodCostPercent.toFixed(2)),
   });
 });
 
-// Save a recipe
+// Create (Save) recipe
 app.post('/save-recipe', async (req, res) => {
   try {
     const recipe = new Recipe(req.body);
@@ -73,11 +76,13 @@ app.post('/save-recipe', async (req, res) => {
   }
 });
 
-// Fetch all recipes with optional ingredient filter
+// Read (Fetch) all recipes with optional filters
 app.get('/recipes', async (req, res) => {
   try {
-    const { ingredient } = req.query;
-    const filter = ingredient ? { 'ingredients.name': { $regex: ingredient, $options: 'i' } } : {};
+    const { ingredient, name } = req.query;
+    const filter = {};
+    if (ingredient) filter['ingredients.name'] = { $regex: ingredient, $options: 'i' };
+    if (name) filter['recipe_name'] = { $regex: name, $options: 'i' };
     const recipes = await Recipe.find(filter);
     res.json(recipes);
   } catch (err) {
@@ -85,7 +90,7 @@ app.get('/recipes', async (req, res) => {
   }
 });
 
-// Fetch one recipe by name
+// Read (Fetch) one recipe by exact name
 app.get('/recipes/:name', async (req, res) => {
   try {
     const recipe = await Recipe.findOne({ recipe_name: req.params.name });
@@ -96,7 +101,7 @@ app.get('/recipes/:name', async (req, res) => {
   }
 });
 
-// Update a recipe by name
+// Update recipe by name
 app.put('/recipes/:name', async (req, res) => {
   try {
     const updates = req.body;
@@ -112,7 +117,7 @@ app.put('/recipes/:name', async (req, res) => {
   }
 });
 
-// Delete a recipe by name
+// Delete recipe by name
 app.delete('/recipes/:name', async (req, res) => {
   try {
     const result = await Recipe.findOneAndDelete({ recipe_name: req.params.name });
