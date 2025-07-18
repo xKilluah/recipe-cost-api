@@ -103,7 +103,10 @@ app.use(requireApiKey);
 
 // Calculate cost
 app.post('/calculate-cost', asyncHandler(async (req, res) => {
-  const { error, value } = calculateCostSchema.validate(req.body);
+    const { error, value } = calculateCostSchema.validate(
+        req.body,
+        { abortEarly: false }
+      );
   if (error) return res.status(400).json({ error: error.details.map(d => d.message) });
 
   const { recipe_name, servings, ingredients, markup_multiplier } = value;
@@ -126,7 +129,10 @@ app.post('/calculate-cost', asyncHandler(async (req, res) => {
 
 // Save recipe
 app.post('/save-recipe', asyncHandler(async (req, res) => {
-  const { error, value } = saveRecipeSchema.validate(req.body);
+    const { error, value } = saveRecipeSchema.validate(
+        req.body,
+        { abortEarly: false }
+      );
   if (error) return res.status(400).json({ error: error.details.map(d => d.message) });
 
   const recipe = new Recipe(value);
@@ -136,7 +142,10 @@ app.post('/save-recipe', asyncHandler(async (req, res) => {
 
 // List recipes
 app.get('/recipes', asyncHandler(async (req, res) => {
-  const { error, value } = getRecipesQuerySchema.validate(req.query);
+    const { error, value } = getRecipesQuerySchema.validate(
+        req.query,
+        { abortEarly: false }
+      );
   if (error) return res.status(400).json({ error: error.details.map(d => d.message) });
 
   const { name, ingredient, page = 1, limit = 10 } = value;
@@ -155,7 +164,10 @@ app.get('/recipes', asyncHandler(async (req, res) => {
 
 // Get one by name
 app.get('/recipes/:name', asyncHandler(async (req, res) => {
-  const { error, value } = nameParamSchema.validate(req.params);
+    const { error, value } = nameParamSchema.validate(
+        req.params,
+        { abortEarly: false }
+      );
   if (error) return res.status(400).json({ error: error.details.map(d => d.message) });
 
   const recipe = await Recipe.findOne({ recipe_name: value.name });
