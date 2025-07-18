@@ -208,13 +208,23 @@ app.use((req, res) => {
 });
 
 // Error handler
+// Error handler
 app.use((err, req, res, next) => {
-  console.error(err);
-  if (err.isJoi) {
-    return res.status(400).json({ error: err.details.map(d => d.message) });
-  }
-  res.status(err.status || 500).json({ error: err.message || 'Internal server error' });
-});
+    console.error(err);
+  
+    // Handle Mongo duplicate key (recipe_name unique) as 409
+    if (err.code === 11000) {
+      return res.status(409).json({ error: 'Recipe name already exists.' });
+    }
+  
+    // Joi validation errors
+    if (err.isJoi) {
+      return res.status(400).json({ error: err.details.map(d => d.message) });
+    }
+  
+    // Fallback
+    res.status(err.status || 500).json({ error: err.message || 'Internal server error' });
+  });
 
 // Start server
 app.listen(port, () => console.log(`🚀 API running on port ${port}`));
