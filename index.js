@@ -1,26 +1,46 @@
 // index.js
-const express      = require('express');
-const mongoose     = require('mongoose');
-const dotenv       = require('dotenv');
-const rateLimit    = require('express-rate-limit');
-const morgan       = require('morgan');
-const Joi          = require('joi');
-const swaggerJsdoc = require('swagger-jsdoc');
-const swaggerUi    = require('swagger-ui-express');
 
+const express         = require('express');
+const mongoose        = require('mongoose');
+const dotenv          = require('dotenv');
+const helmet          = require('helmet');
+const cors            = require('cors');
+const mongoSanitize   = require('express-mongo-sanitize');
+const xssClean        = require('xss-clean');
+const rateLimit       = require('express-rate-limit');
+const morgan          = require('morgan');
+const Joi             = require('joi');
+const swaggerJsdoc    = require('swagger-jsdoc');
+const swaggerUi       = require('swagger-ui-express');
+
+// Load environment variables
 dotenv.config();
+
 const app  = express();
 const port = process.env.PORT || 3000;
 
-// ─── MIDDLEWARE ────────────────────────────────────────────────────────────────
+// ─── SECURITY MIDDLEWARE ──────────────────────────────────────────────────────
+app.use(helmet());
+app.use(cors({
+  origin: process.env.ALLOWED_ORIGIN || 'https://your-frontend.example.com',
+  methods: ['GET','POST','PUT','DELETE'],
+  allowedHeaders: ['Content-Type','x-api-key']
+}));
+app.use(mongoSanitize());
+app.use(xssClean());
+
+// ─── LOGGING + RATE LIMITING ─────────────────────────────────────────────────
 app.use(morgan('tiny'));
 app.use(rateLimit({
-  windowMs: 60_000,
+  windowMs: 60 * 1000, // 1 minute
   max: 100,
   message: { error: 'Too many requests, please try again later.' }
 }));
+
+// ─── JSON BODY PARSING ────────────────────────────────────────────────────────
 app.use(express.json());
 
+// ─── AUTH MIDDLEWARE ─────────────────────────────────────────────────────────
 const requireApiKey = (req, res, next) => {
   const key = req.header('x-api-key');
   if (!key || key !== process.env.API_KEY) {
@@ -28,10 +48,12 @@ const requireApiKey = (req, res, next) => {
   }
   next();
 };
+
+// Helper for async handlers
 const asyncHandler = fn => (req, res, next) =>
   Promise.resolve(fn(req, res, next)).catch(next);
 
-// ─── SWAGGER SETUP ─────────────────────────────────────────────────────────────
+// ─── SWAGGER / OPENAPI SETUP ──────────────────────────────────────────────────
 const swaggerDefinition = {
   openapi: '3.0.0',
   info: {
@@ -49,55 +71,55 @@ const swaggerDefinition = {
   },
   security: [{ ApiKeyAuth: [] }]
 };
-const swaggerSpec = swaggerJsdoc({
+
+const swaggerOptions = {
   swaggerDefinition,
   apis: ['./index.js']
-});
+};
+
+const swaggerSpec = swaggerJsdoc(swaggerOptions);
 app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec, { explorer: true }));
 
-// ─── DB & MODEL ────────────────────────────────────────────────────────────────
+// ─── DATABASE SETUP ───────────────────────────────────────────────────────────
 mongoose
   .connect(process.env.MONGODB_URI)
   .then(() => console.log('✅ Connected to MongoDB'))
   .catch(err => console.error('❌ MongoDB connection error:', err));
 
+// ─── MONGOOSE MODEL ───────────────────────────────────────────────────────────
 const recipeSchema = new mongoose.Schema({
   recipe_name: { type: String, required: true, unique: true },
   servings:    { type: Number, required: true },
-  ingredients: [{
-    name:      { type: String, required: true },
-    quantity:  { type: Number, required: true },
-    unit:      { type: String, required: true },
-    unit_cost: { type: Number, required: true }
-  }]
+  ingredients: [{ name: String, quantity: Number, unit: String, unit_cost: Number }]
 });
 const Recipe = mongoose.model('Recipe', recipeSchema);
 
-// ─── JOI SCHEMAS ────────────────────────────────────────────────────────────────
+// ─── JOI SCHEMAS ───────────────────────────────────────────────────────────────
 const ingredientSchema = Joi.object({
   name:      Joi.string().required(),
   quantity:  Joi.number().positive().required(),
   unit:      Joi.string().required(),
   unit_cost: Joi.number().min(0).precision(4).required()
 });
+
 const calculateCostSchema = Joi.object({
   recipe_name:       Joi.string().required(),
   servings:          Joi.number().integer().min(1).required(),
   ingredients:       Joi.array().items(ingredientSchema).min(1).required(),
   markup_multiplier: Joi.number().positive().optional()
 });
-const saveRecipeSchema      = calculateCostSchema;
+
+const saveRecipeSchema     = calculateCostSchema;
 const getRecipesQuerySchema = Joi.object({
   name:       Joi.string().optional(),
   ingredient: Joi.string().optional(),
   page:       Joi.number().integer().min(1).optional(),
   limit:      Joi.number().integer().min(1).optional()
 });
-const nameParamSchema = Joi.object({ name: Joi.string().required() });
+const nameParamSchema      = Joi.object({ name: Joi.string().required() });
 
-// ─── ROUTES ────────────────────────────────────────────────────────────────────
+// ─── ROUTES ───────────────────────────────────────────────────────────────────
 app.get('/', (req, res) => res.send('👨‍🍳 Recipe Cost API is up!'));
-
 app.use(requireApiKey);
 
 app.post('/calculate-cost', asyncHandler(async (req, res) => {
@@ -149,7 +171,7 @@ app.get('/recipes', asyncHandler(async (req, res) => {
 }));
 
 app.get('/recipes/:name', asyncHandler(async (req, res) => {
-  const { error, value } = nameParamSchema.validate(req.params, { abortEarly: false });
+  const { error, value } = name_paramSchema.validate(req.params, { abortEarly: false });
   if (error) return res.status(400).json({ error: error.details.map(d => d.message) });
 
   const recipe = await Recipe.findOne({ recipe_name: value.name });
@@ -182,18 +204,23 @@ app.delete('/recipes/:name', asyncHandler(async (req, res) => {
   res.json({ message: 'Recipe deleted successfully.' });
 }));
 
-// 404 & error handlers
+// 404 handler
 app.use((req, res) => res.status(404).json({ error: 'Not found' }));
+
+// Error handler
 app.use((err, req, res, next) => {
   console.error(err);
-  if (err.code === 11000) return res.status(409).json({ error: 'Recipe name already exists.' });
-  if (err.isJoi)        return res.status(400).json({ error: err.details.map(d => d.message) });
+  if (err.code === 11000) {
+    return res.status(409).json({ error: 'Recipe name already exists.' });
+  }
+  if (err.isJoi) {
+    return res.status(400).json({ error: err.details.map(d => d.message) });
+  }
   res.status(err.status || 500).json({ error: err.message || 'Internal server error' });
 });
 
-// only start server when run directly
-if (require.main === module) {
-  app.listen(port, () => console.log(`🚀 API running on port ${port}`));
-}
+// Swagger schemas omitted for brevity
 
-module.exports = app;
+app.listen(port, () => {
+  console.log(`🚀 API running on port ${port}`);
+});
