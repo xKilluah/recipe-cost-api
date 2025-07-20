@@ -31,4 +31,5 @@ jobs:
         with:
           serviceId: ${{ secrets.RENDER_SERVICE_ID }}
           apiKey:    ${{ secrets.RENDER_API_KEY }}
+          deploy-hook-url: ${{ secrets.RENDER_DEPLOY_HOOK_URL }}
           multipleDeployment: false  # only one deploy per push
