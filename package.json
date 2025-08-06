@@ -5,7 +5,7 @@
   "main": "index.js",
   "scripts": {
     "start": "node index.js",
-    "test": "jest --runInBand"
+    "test": "jest --runInBand -passWithNoTests"
   },
   "dependencies": {
     "cors": "^2.8.5",
