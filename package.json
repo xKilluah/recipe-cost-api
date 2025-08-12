@@ -8,7 +8,7 @@
     "test": "jest --runInBand -passWithNoTests"
   },
   "dependencies": {
-    "@sentry/node": "^10.3.0",
+    "@sentry/node": "^10.4.0",
     "@sentry/profiling-node": "^10.3.0",
     "cors": "^2.8.5",
     "dotenv": "^17.0.1",
@@ -16,7 +16,7 @@
     "express-mongo-sanitize": "^2.2.0",
     "express-rate-limit": "^7.5.1",
     "helmet": "^8.1.0",
-    "joi": "^17.0.0",
+    "joi": "^17.13.3",
     "mongoose": "^8.16.1",
     "morgan": "^1.10.0",
     "swagger-jsdoc": "^6.2.8",
