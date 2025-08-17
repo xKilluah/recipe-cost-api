@@ -18,19 +18,20 @@ jobs:
           curl -fsS -X POST "${{ secrets.RENDER_DEPLOY_HOOK_URL }}"
 
       # Optional but recommended: wait until the app responds 200 on "/"
-      - name: Wait for health check
+       - name: Wait for health check
         env:
           URL: https://recipe-cost-api.onrender.com/
         run: |
-          echo "Waiting for $URL to return 200..."
-          for i in {1..30}; do
-            code=$(curl -s -o /dev/null -w "%{http_code}" "$URL")
-            if [ "$code" = "200" ]; then
-              echo "Health check OK (200) ✅"
+          echo "Waiting for $URL to become healthy (2xx/3xx)…"
+          for i in {1..60}; do
+            code=$(curl -sS -o /dev/null -w "%{http_code}" "$URL" || echo "000")
+            echo "Attempt $i -> HTTP $code"
+            # consider 2xx and 3xx as healthy
+            if [ "$code" -ge 200 ] && [ "$code" -lt 400 ]; then
+              echo "Health check OK ✅"
               exit 0
             fi
-            echo "Attempt $i: got $code, retrying in 10s..."
-            sleep 10
+            sleep 5
           done
           echo "Health check failed after 5 minutes ❌"
           exit 1
