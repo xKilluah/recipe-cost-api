@@ -8,7 +8,6 @@ const morgan            = require('morgan');
 const helmet            = require('helmet');
 const cors              = require('cors');
 const mongoSanitize     = require('express-mongo-sanitize');
-const xssClean          = require('xss-clean');
 const Joi               = require('joi');
 const swaggerJsdoc      = require('swagger-jsdoc');
 const swaggerUi         = require('swagger-ui-express');
@@ -51,7 +50,6 @@ Sentry.init({
 app.use(helmet());
 app.use(cors({ origin: '*', methods: ['GET', 'POST', 'PUT', 'DELETE'] }));
 app.use(mongoSanitize());
-app.use(xssClean());
 
 app.use(morgan('tiny'));
 
