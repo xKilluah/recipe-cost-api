@@ -1,35 +1,36 @@
-name: CI & Deploy
+name: Deploy to Render (hook + health check)
 
 on:
   push:
-    branches:
-      - main
+    branches: [ main ]
+
+# Prevent overlapping deploys
+concurrency:
+  group: recipe-cost-api-deploy
+  cancel-in-progress: false
 
 jobs:
-  test:
-    name: 🧪 Test
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v3
-      - name: Use Node.js
-        uses: actions/setup-node@v3
-        with:
-          node-version: 18
-      - run: npm ci
-      - run: npm test
-
   deploy:
-    name: 🚀 Deploy to Render
-    needs: test
-    if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - name: Trigger Render deployment (Deploy Hook)
+        run: |
+          curl -fsS -X POST "${{ secrets.RENDER_DEPLOY_HOOK_URL }}"
 
-      - name: Trigger Render Deployment
-        uses: sws2apps/render-deployment@main
-        with:
-          serviceId: ${{ secrets.RENDER_SERVICE_ID }}
-          apiKey:    ${{ secrets.RENDER_API_KEY }}
-          deploy-hook-url: ${{ secrets.RENDER_DEPLOY_HOOK_URL }}
-          multipleDeployment: false  # only one deploy per push
+      # Optional but recommended: wait until the app responds 200 on "/"
+      - name: Wait for health check
+        env:
+          URL: https://recipe-cost-api.onrender.com/
+        run: |
+          echo "Waiting for $URL to return 200..."
+          for i in {1..30}; do
+            code=$(curl -s -o /dev/null -w "%{http_code}" "$URL")
+            if [ "$code" = "200" ]; then
+              echo "Health check OK (200) ✅"
+              exit 0
+            fi
+            echo "Attempt $i: got $code, retrying in 10s..."
+            sleep 10
+          done
+          echo "Health check failed after 5 minutes ❌"
+          exit 1
