@@ -4,7 +4,7 @@ on:
   push:
     branches: [ main ]
 
-# Prevent overlapping deploys
+# avoid overlapping runs
 concurrency:
   group: recipe-cost-api-deploy
   cancel-in-progress: false
@@ -17,8 +17,7 @@ jobs:
         run: |
           curl -fsS -X POST "${{ secrets.RENDER_DEPLOY_HOOK_URL }}"
 
-      # Optional but recommended: wait until the app responds 200 on "/"
-       - name: Wait for health check
+      - name: Wait for health check
         env:
           URL: https://recipe-cost-api.onrender.com/
         run: |
@@ -26,7 +25,6 @@ jobs:
           for i in {1..60}; do
             code=$(curl -sS -o /dev/null -w "%{http_code}" "$URL" || echo "000")
             echo "Attempt $i -> HTTP $code"
-            # consider 2xx and 3xx as healthy
             if [ "$code" -ge 200 ] && [ "$code" -lt 400 ]; then
               echo "Health check OK ✅"
               exit 0
